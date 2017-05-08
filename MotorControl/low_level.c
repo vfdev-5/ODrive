@@ -47,12 +47,12 @@ Motor_t motors[] = {
         .control_mode = CTRL_MODE_CURRENT_CONTROL,
         .error = ERROR_NO_ERROR,
         .pos_setpoint = 0.0f,
-        .pos_gain = 20.0f, // [(counts/s) / counts]
+        .pos_gain = 30.0f, // [(counts/s) / counts]
         .vel_setpoint = 0.0f,
-        .vel_gain = 15.0f / 10000.0f, // [A/(counts/s)]
+        .vel_gain = 20.0f / 10000.0f, // [A/(counts/s)]
         .vel_integrator_gain = 10.0f / 10000.0f, // [A/(counts/s * s)]
         .vel_integrator_current = 0.0f, // [A]
-        .vel_limit = 20000.0f, // [counts/s]
+        .vel_limit = 300000.0f, // [counts/s]
         .current_setpoint = 0.0f, // [A]
         .calibration_current = 10.0f, // [A]
         .phase_inductance = 0.0f, // to be set by measure_phase_inductance
@@ -107,12 +107,12 @@ Motor_t motors[] = {
         .control_mode = CTRL_MODE_CURRENT_CONTROL,
         .error = ERROR_NO_ERROR,
         .pos_setpoint = 0.0f,
-        .pos_gain = 20.0f, // [(counts/s) / counts]
+        .pos_gain = 30.0f, // [(counts/s) / counts]
         .vel_setpoint = 0.0f,
-        .vel_gain = 15.0f / 10000.0f, // [A/(counts/s)]
+        .vel_gain = 20.0f / 10000.0f, // [A/(counts/s)]
         .vel_integrator_gain = 10.0f / 10000.0f, // [A/(counts/s * s)]
         .vel_integrator_current = 0.0f, // [A]
-        .vel_limit = 20000.0f, // [counts/s]
+        .vel_limit = 300000.0f, // [counts/s]
         .current_setpoint = 0.0f, // [A]
         .calibration_current = 10.0f, // [A]
         .phase_inductance = 0.0f, // to be set by measure_phase_inductance
@@ -952,8 +952,8 @@ static bool motor_calibration(Motor_t* motor){
     motor->error = ERROR_NO_ERROR;
 
     // #warning(hardcoded values for SK3-5065-280kv!)
-    // float R = 0.0332548246f;
-    // float L = 7.97315806e-06f;
+    // float R = 0.0322238617f;
+    // float L = 8.87160877e-6f;
 
     if (!measure_phase_resistance(motor, motor->calibration_current, 1.0f))
         return false;

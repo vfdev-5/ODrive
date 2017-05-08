@@ -140,6 +140,18 @@ void StartDefaultTask(void const * argument)
 // Thread to handle deffered processing of USB interrupt
 void usb_cmd_thread(void const * argument) {
 
+  //Temp cmd hack override
+  for (;;) {
+    set_pos_setpoint(&motors[0], 80000.0f, 0.0f, 0.0f);
+    osDelay(500);
+    set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
+    osDelay(500);
+    set_pos_setpoint(&motors[0], 80000.0f, 0.0f, 0.0f);
+    osDelay(500);
+    set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
+    osDelay(3000);
+  }
+
   for (;;) {
     // Wait for signalling from USB interrupt (OTG_FS_IRQHandler)
     osSemaphoreWait(sem_usb_irq, osWaitForever);
