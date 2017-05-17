@@ -142,11 +142,11 @@ void usb_cmd_thread(void const * argument) {
 
   //Temp cmd hack override
   for (;;) {
-    set_pos_setpoint(&motors[0], 10000.0f, 0.0f, 0.0f);
+    set_pos_setpoint(&motors[0], 23000.0f, 0.0f, 0.0f);
     osDelay(500);
     set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
     osDelay(500);
-    set_pos_setpoint(&motors[0], 10000.0f, 0.0f, 0.0f);
+    set_pos_setpoint(&motors[0], 23000.0f, 0.0f, 0.0f);
     osDelay(500);
     set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
     osDelay(6000);
