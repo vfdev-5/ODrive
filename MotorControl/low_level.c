@@ -951,14 +951,14 @@ static bool motor_calibration(Motor_t* motor){
     motor->calibration_ok = false;
     motor->error = ERROR_NO_ERROR;
 
-    // #warning(hardcoded values for SK3-5065-280kv!)
+    #warning(hardcoded values for SK3-5065-280kv!)
     // float R = 0.0322238617f;
-    // float L = 8.87160877e-6f;
+    motor->phase_inductance = 8.87160877e-6f;
 
     if (!measure_phase_resistance(motor, motor->calibration_current, 1.0f))
         return false;
-    if (!measure_phase_inductance(motor, -1.0f, 1.0f))
-        return false;
+    // if (!measure_phase_inductance(motor, -1.0f, 1.0f))
+    //     return false;
     if (!calib_enc_offset(motor, motor->calibration_current * motor->phase_resistance))
         return false;
     
@@ -1262,7 +1262,7 @@ void motor_thread(void const * argument) {
         
         if (motor->calibration_ok && motor->enable_control) {
             __HAL_TIM_MOE_ENABLE(motor->motor_timer);
-            osDelay(10);
+            osDelay(20);
             control_motor_loop(motor);
             __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(motor->motor_timer);
             if(motor->enable_control){ // if control is still enabled, we exited because of error
