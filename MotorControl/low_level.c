@@ -47,12 +47,12 @@ Motor_t motors[] = {
         .control_mode = CTRL_MODE_CURRENT_CONTROL,
         .error = ERROR_NO_ERROR,
         .pos_setpoint = 0.0f,
-        .pos_gain = 30.0f, // [(counts/s) / counts]
+        .pos_gain = 10.0f, // [(counts/s) / counts]
         .vel_setpoint = 0.0f,
-        .vel_gain = 20.0f / 10000.0f, // [A/(counts/s)]
+        .vel_gain = 25.0f / 10000.0f, // [A/(counts/s)]
         .vel_integrator_gain = 10.0f / 10000.0f, // [A/(counts/s * s)]
         .vel_integrator_current = 0.0f, // [A]
-        .vel_limit = 300000.0f, // [counts/s]
+        .vel_limit = 100000.0f, // [counts/s]
         .current_setpoint = 0.0f, // [A]
         .calibration_current = 10.0f, // [A]
         .phase_inductance = 0.0f, // to be set by measure_phase_inductance
@@ -107,12 +107,12 @@ Motor_t motors[] = {
         .control_mode = CTRL_MODE_CURRENT_CONTROL,
         .error = ERROR_NO_ERROR,
         .pos_setpoint = 0.0f,
-        .pos_gain = 30.0f, // [(counts/s) / counts]
+        .pos_gain = 10.0f, // [(counts/s) / counts]
         .vel_setpoint = 0.0f,
-        .vel_gain = 20.0f / 10000.0f, // [A/(counts/s)]
+        .vel_gain = 25.0f / 10000.0f, // [A/(counts/s)]
         .vel_integrator_gain = 10.0f / 10000.0f, // [A/(counts/s * s)]
         .vel_integrator_current = 0.0f, // [A]
-        .vel_limit = 300000.0f, // [counts/s]
+        .vel_limit = 100000.0f, // [counts/s]
         .current_setpoint = 0.0f, // [A]
         .calibration_current = 10.0f, // [A]
         .phase_inductance = 0.0f, // to be set by measure_phase_inductance
@@ -171,7 +171,7 @@ static const float one_by_sqrt3 = 0.57735026919f;
 static const float sqrt3_by_2 = 0.86602540378;
 
 /* Private variables ---------------------------------------------------------*/
-static float brake_resistance = 2.0f; // [ohm]
+static float brake_resistance = 0.47f; // [ohm]
 
 /* Monitoring */
 monitoring_slot monitoring_slots[20] = {0};
