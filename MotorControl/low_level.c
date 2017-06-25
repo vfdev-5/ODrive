@@ -43,8 +43,8 @@ static float elec_rad_per_enc = POLE_PAIRS * 2 * M_PI * (1.0f / (float)ENCODER_C
 // TODO: Migrate to C++, clearly we are actually doing object oriented code here...
 // TODO: For nice encapsulation, consider not having the motor objects public
 
-// NOTE: for gimbal motors, all units that are A are instead V.
-// example: vel_gain is [V/(count/s)] instead.
+// NOTE: for gimbal motors, all units of A are instead V.
+// example: vel_gain is [V/(count/s)] instead of [A/(count/s)]
 Motor_t motors[] = {
     {   // M0
         .control_mode = CTRL_MODE_CURRENT_CONTROL,
