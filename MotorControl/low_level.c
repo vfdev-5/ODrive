@@ -78,6 +78,8 @@ Motor_t motors[] = {
             .enableTimeOut = false
         },
         // .gate_driver_regs Init by DRV8301_setup
+        // .motor_type = MOTOR_TYPE_HIGH_CURRENT,
+        .motor_type = MOTOR_TYPE_GIMBAL,
         .shunt_conductance = 1.0f/0.0005f, //[S]
         .phase_current_rev_gain = 0.0f, // to be set by DRV8301_setup
         .current_control = {
@@ -138,6 +140,7 @@ Motor_t motors[] = {
             .enableTimeOut = false
         },
         // .gate_driver_regs Init by DRV8301_setup
+        .motor_type = MOTOR_TYPE_HIGH_CURRENT,
         .shunt_conductance = 1.0f/0.0005f, //[S]
         .phase_current_rev_gain = 0.0f, // to be set by DRV8301_setup
         .current_control = {
