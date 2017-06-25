@@ -42,19 +42,22 @@ static float elec_rad_per_enc = POLE_PAIRS * 2 * M_PI * (1.0f / (float)ENCODER_C
 
 // TODO: Migrate to C++, clearly we are actually doing object oriented code here...
 // TODO: For nice encapsulation, consider not having the motor objects public
+
+// NOTE: for gimbal motors, all units that are A are instead V.
+// example: vel_gain is [V/(count/s)] instead.
 Motor_t motors[] = {
     {   // M0
         .control_mode = CTRL_MODE_CURRENT_CONTROL,
         .error = ERROR_NO_ERROR,
         .pos_setpoint = 0.0f,
-        .pos_gain = 20.0f, // [(counts/s) / counts]
+        .pos_gain = 5.0f, // [(counts/s) / counts]
         .vel_setpoint = 0.0f,
-        .vel_gain = 15.0f / 10000.0f, // [A/(counts/s)]
-        .vel_integrator_gain = 10.0f / 10000.0f, // [A/(counts/s * s)]
+        .vel_gain = 1.0f / 10000.0f, // [A/(counts/s)]
+        .vel_integrator_gain = 0.0f / 10000.0f, // [A/(counts/s * s)]
         .vel_integrator_current = 0.0f, // [A]
         .vel_limit = 20000.0f, // [counts/s]
         .current_setpoint = 0.0f, // [A]
-        .calibration_current = 10.0f, // [A]
+        .calibration_current = 4.0f, // [A]
         .phase_inductance = 0.0f, // to be set by measure_phase_inductance
         .phase_resistance = 0.0f, // to be set by measure_phase_resistance
         .motor_thread = 0,
@@ -84,7 +87,7 @@ Motor_t motors[] = {
         .phase_current_rev_gain = 0.0f, // to be set by DRV8301_setup
         .current_control = {
             // .current_lim = 75.0f, //[A] // Note: consistent with 40v/v gain
-            .current_lim = 10.0f, //[A]
+            .current_lim = 6.0f, //[A]
             .p_gain = 0.0f, // [V/A] should be auto set after resistance and inductance measurement
             .i_gain = 0.0f, // [V/As] should be auto set after resistance and inductance measurement
             .v_current_control_integral_d = 0.0f,
@@ -295,7 +298,7 @@ static void update_rotor(Rotor_t* rotor);
 static void update_brake_current(float brake_current);
 static void queue_modulation_timings(Motor_t* motor, float mod_alpha, float mod_beta);
 static void queue_voltage_timings(Motor_t* motor, float v_alpha, float v_beta);
-static void FOC_voltage(Motor_t* motor, float v_d, float v_q);
+static bool FOC_voltage(Motor_t* motor, float v_d, float v_q);
 static bool FOC_current(Motor_t* motor, float Id_des, float Iq_des);
 static void control_motor_loop(Motor_t* motor);
 // Motor thread (is public)
@@ -954,15 +957,21 @@ static bool motor_calibration(Motor_t* motor){
     motor->calibration_ok = false;
     motor->error = ERROR_NO_ERROR;
 
-    // #warning(hardcoded values for SK3-5065-280kv!)
-    // float R = 0.0332548246f;
-    // float L = 7.97315806e-06f;
+    float calibration_voltage = 0.0f;
+    if (motor->motor_type == MOTOR_TYPE_HIGH_CURRENT) {
+        if (!measure_phase_resistance(motor, motor->calibration_current, 1.0f))
+            return false;
+        calibration_voltage = motor->calibration_current * motor->phase_resistance;
 
-    if (!measure_phase_resistance(motor, motor->calibration_current, 1.0f))
+        if (!measure_phase_inductance(motor, -1.0f, 1.0f))
+            return false;
+    } else if (motor->motor_type == MOTOR_TYPE_GIMBAL) {
+        calibration_voltage = motor->calibration_current;
+    } else {
         return false;
-    if (!measure_phase_inductance(motor, -1.0f, 1.0f))
-        return false;
-    if (!calib_enc_offset(motor, motor->calibration_current * motor->phase_resistance))
+    }
+
+    if (!calib_enc_offset(motor, calibration_voltage))
         return false;
     
     // Calculate current control gains
@@ -1080,7 +1089,7 @@ static void queue_voltage_timings(Motor_t* motor, float v_alpha, float v_beta) {
     queue_modulation_timings(motor, mod_alpha, mod_beta);
 }
 
-static void FOC_voltage(Motor_t* motor, float v_d, float v_q) {
+static bool FOC_voltage(Motor_t* motor, float v_d, float v_q) {
     float c = arm_cos_f32(motor->rotor.phase);
     float s = arm_sin_f32(motor->rotor.phase);
     float v_alpha = c*v_d - s*v_q;
@@ -1090,8 +1099,9 @@ static void FOC_voltage(Motor_t* motor, float v_d, float v_q) {
     // Check we meet deadlines after queueing
     if (!(check_timing(motor) < motor->control_deadline)) {
         motor->error = ERROR_FOC_VOLTAGE_TIMING;
-        return;
+        return false;
     }
+    return true;
 }
 
 static bool FOC_current(Motor_t* motor, float Id_des, float Iq_des) {
@@ -1213,7 +1223,7 @@ static void control_motor_loop(Motor_t* motor) {
         }
 
         // Velocity integrator (behaviour dependent on limiting)
-        if (motor->control_mode < CTRL_MODE_VELOCITY_CONTROL ) {
+        if (motor->control_mode < CTRL_MODE_VELOCITY_CONTROL) {
             // reset integral if not in use
             motor->vel_integrator_current = 0.0f;
         } else {
@@ -1226,8 +1236,17 @@ static void control_motor_loop(Motor_t* motor) {
         }
 
         // Execute current command
-        if(!FOC_current(motor, 0.0f, Iq)){
-            break; // in case of error exit loop, motor->error has been set by FOC_current
+        if (motor->motor_type == MOTOR_TYPE_HIGH_CURRENT) {
+            if(!FOC_current(motor, 0.0f, Iq)){
+                break; // in case of error exit loop, motor->error has been set by FOC_current
+            }
+        } else if (motor->motor_type == MOTOR_TYPE_GIMBAL) {
+            //In gimbal motor mode, current is reinterptreted as voltage.
+            if(!FOC_voltage(motor, 0.0f, Iq)){
+                break; // in case of error exit loop, motor->error has been set by FOC_voltage
+            }
+        } else {
+            break;
         }
     }
 
