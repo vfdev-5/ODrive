@@ -7,7 +7,7 @@
 #include "drv8301.h"
 
 //default timeout waiting for phase measurement signals
-#define PH_CURRENT_MEAS_TIMEOUT 5 // [ms]
+#define PH_CURRENT_MEAS_TIMEOUT 2 // [ms]
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum {
@@ -32,6 +32,7 @@ typedef enum {
     ERROR_FOC_VOLTAGE_TIMING,
     ERROR_GATEDRIVER_INVALID_GAIN,
     ERROR_PWM_SRC_FAIL,
+    ERROR_UNEXPECTED_STEP_SRC,
 } Error_t;
 
 // Note: these should be sorted from lowest level of control to
@@ -72,6 +73,8 @@ typedef struct {
 #define TIMING_LOG_SIZE 16
 typedef struct {
     Motor_control_mode_t control_mode;
+    bool enable_step_dir;
+    float counts_per_step;
     int error;
     float pos_setpoint;
     float pos_gain;
@@ -92,6 +95,7 @@ typedef struct {
     TIM_HandleTypeDef* motor_timer;
     uint16_t next_timings[3];
     uint16_t control_deadline;
+    uint16_t last_cpu_time;
     Iph_BC_t current_meas;
     Iph_BC_t DC_calib;
     DRV8301_Obj gate_driver;
@@ -125,8 +129,9 @@ void set_current_setpoint(Motor_t* motor, float current_setpoint);
 
 void safe_assert(int arg);
 void init_motor_control();
-void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc);
-void vbus_sense_adc_cb(ADC_HandleTypeDef* hadc);
+void step_cb(uint16_t GPIO_Pin);
+void pwm_trig_adc_cb(ADC_HandleTypeDef* hadc, bool injected);
+void vbus_sense_adc_cb(ADC_HandleTypeDef* hadc, bool injected);
 
 //@TODO move motor thread to high level file
 void motor_thread(void const * argument);

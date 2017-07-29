@@ -3,6 +3,11 @@
   * File Name          : main.h
   * Description        : This file contains the common defines of the application
   ******************************************************************************
+  * This notice applies to any and all portions of this file
+  * that are not between comment pairs USER CODE BEGIN and
+  * USER CODE END. Other portions of this file, whether 
+  * inserted by the user or by software development tools
+  * are owned by their respective copyright owners.
   *
   * Copyright (c) 2017 STMicroelectronics International N.V. 
   * All rights reserved.
@@ -58,7 +63,7 @@
 #define TIM_APB1_CLOCK_HZ 84000000
 // #define TIM_APB1_PERIOD_CLOCKS 2048
 #define TIM_APB1_PERIOD_CLOCKS 4096
-#define TIM_APB1_DEADTIME_CLOCKS 20
+#define TIM_APB1_DEADTIME_CLOCKS 40
 
 #define M0_nCS_Pin GPIO_PIN_13
 #define M0_nCS_GPIO_Port GPIOC
@@ -84,6 +89,7 @@
 #define GPIO_4_GPIO_Port GPIOA
 #define GPIO_3_Pin GPIO_PIN_4
 #define GPIO_3_GPIO_Port GPIOA
+#define GPIO_3_EXTI_IRQn EXTI4_IRQn
 #define GPIO_2_Pin GPIO_PIN_5
 #define GPIO_2_GPIO_Port GPIOA
 #define AUX_V_Pin GPIO_PIN_6
@@ -100,6 +106,7 @@
 #define M1_CL_GPIO_Port GPIOB
 #define GPIO_1_Pin GPIO_PIN_2
 #define GPIO_1_GPIO_Port GPIOB
+#define GPIO_1_EXTI_IRQn EXTI2_IRQn
 #define AUX_L_Pin GPIO_PIN_10
 #define AUX_L_GPIO_Port GPIOB
 #define AUX_H_Pin GPIO_PIN_11
@@ -146,7 +153,14 @@
 #define CURRENT_MEAS_PERIOD ((float)(2*TIM_1_8_PERIOD_CLOCKS)/(float)TIM_1_8_CLOCK_HZ)
 #define CURRENT_MEAS_HZ (TIM_1_8_CLOCK_HZ/(2*TIM_1_8_PERIOD_CLOCKS))
 
+#define MACRO_MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MACRO_MIN(x, y) (((x) < (y)) ? (x) : (y))
+
 /* USER CODE END Private defines */
+
+void _Error_Handler(char *, int);
+
+#define Error_Handler() _Error_Handler(__FILE__, __LINE__)
 
 /**
   * @}

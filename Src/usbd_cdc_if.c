@@ -3,6 +3,11 @@
   * @file           : usbd_cdc_if.c
   * @brief          :
   ******************************************************************************
+  * This notice applies to any and all portions of this file
+  * that are not between comment pairs USER CODE BEGIN and
+  * USER CODE END. Other portions of this file, whether 
+  * inserted by the user or by software development tools
+  * are owned by their respective copyright owners.
   *
   * Copyright (c) 2017 STMicroelectronics International N.V. 
   * All rights reserved.
@@ -264,6 +269,10 @@ static int8_t CDC_Receive_FS (uint8_t* Buf, uint32_t *Len)
   /* USER CODE BEGIN 6 */
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+
+  //Append null termination at end of string
+  int null_idx = MACRO_MIN(*Len, APP_RX_DATA_SIZE-1);
+  Buf[null_idx] = 0;
 
   motor_parse_cmd(Buf, *Len);
 
