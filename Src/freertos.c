@@ -149,11 +149,14 @@ void usb_cmd_thread(void const * argument) {
   for (;;) {
     set_pos_setpoint(&motors[0], 23000.0f, 0.0f, 0.0f);
     osDelay(500);
+    // set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
+    set_pos_setpoint(&motors[1], 6000.0f, 0.0f, 0.0f);
+    osDelay(500);
+    // set_pos_setpoint(&motors[0], 23000.0f, 0.0f, 0.0f);
     set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
     osDelay(500);
-    set_pos_setpoint(&motors[0], 23000.0f, 0.0f, 0.0f);
-    osDelay(500);
-    set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
+    // set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
+    set_pos_setpoint(&motors[1], 0.0f, 0.0f, 0.0f);
     osDelay(6000);
   }
 

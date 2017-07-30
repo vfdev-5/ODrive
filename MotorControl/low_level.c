@@ -50,7 +50,8 @@ Motor_t motors[] = {
         .counts_per_step = 2.0f,
         .error = ERROR_NO_ERROR,
         .pos_setpoint = 0.0f,
-        .pos_gain = 17.0f, // [(counts/s) / counts]
+        // .pos_gain = 17.0f, // [(counts/s) / counts]
+        .pos_gain = 10.0f, // [(counts/s) / counts]
         .vel_setpoint = 0.0f,
         .vel_gain = 25.0f / 10000.0f, // [A/(counts/s)]
         .vel_integrator_gain = 10.0f / 10000.0f, // [A/(counts/s * s)]
@@ -86,7 +87,7 @@ Motor_t motors[] = {
         .phase_current_rev_gain = 0.0f, // to be set by DRV8301_setup
         .current_control = {
             // .current_lim = 75.0f, //[A] // Note: consistent with 40v/v gain
-            .current_lim = 30.0f, //[A]
+            .current_lim = 20.0f, //[A]
             .p_gain = 0.0f, // [V/A] should be auto set after resistance and inductance measurement
             .i_gain = 0.0f, // [V/As] should be auto set after resistance and inductance measurement
             .v_current_control_integral_d = 0.0f,
@@ -113,7 +114,8 @@ Motor_t motors[] = {
         .counts_per_step = 2.0f,
         .error = ERROR_NO_ERROR,
         .pos_setpoint = 0.0f,
-        .pos_gain = 17.0f, // [(counts/s) / counts]
+        // .pos_gain = 17.0f, // [(counts/s) / counts]
+        .pos_gain = 10.0f, // [(counts/s) / counts]
         .vel_setpoint = 0.0f,
         .vel_gain = 25.0f / 10000.0f, // [A/(counts/s)]
         .vel_integrator_gain = 10.0f / 10000.0f, // [A/(counts/s * s)]
@@ -149,7 +151,7 @@ Motor_t motors[] = {
         .phase_current_rev_gain = 0.0f, // to be set by DRV8301_setup
         .current_control = {
             // .current_lim = 75.0f, //[A] // Note: consistent with 40v/v gain
-            .current_lim = 30.0f, //[A]
+            .current_lim = 20.0f, //[A]
             .p_gain = 0.0f, // [V/A] should be auto set after resistance and inductance measurement
             .i_gain = 0.0f, // [V/As] should be auto set after resistance and inductance measurement
             .v_current_control_integral_d = 0.0f,
@@ -962,14 +964,10 @@ static bool motor_calibration(Motor_t* motor){
     motor->calibration_ok = false;
     motor->error = ERROR_NO_ERROR;
 
-    #warning(hardcoded values for SK3-5065-280kv!)
-    // float R = 0.0322238617f;
-    motor->phase_inductance = 8.87160877e-6f;
-
     if (!measure_phase_resistance(motor, motor->calibration_current, 1.0f))
         return false;
-    // if (!measure_phase_inductance(motor, -1.0f, 1.0f))
-    //     return false;
+    if (!measure_phase_inductance(motor, -1.0f, 1.0f))
+        return false;
     if (!calib_enc_offset(motor, motor->calibration_current * motor->phase_resistance))
         return false;
     
