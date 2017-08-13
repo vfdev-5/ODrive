@@ -145,18 +145,28 @@ void StartDefaultTask(void const * argument)
 // Thread to handle deffered processing of USB interrupt
 void usb_cmd_thread(void const * argument) {
 
+  //start delay
+  osDelay(10000);
+
   //Temp cmd hack override
   for (;;) {
+    //square 1
     set_pos_setpoint(&motors[0], 23000.0f, 0.0f, 0.0f);
     osDelay(500);
-    // set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
-    set_pos_setpoint(&motors[1], 6000.0f, 0.0f, 0.0f);
+    set_pos_setpoint(&motors[1], 15000.0f, 0.0f, 0.0f);
     osDelay(500);
-    // set_pos_setpoint(&motors[0], 23000.0f, 0.0f, 0.0f);
     set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
     osDelay(500);
-    // set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
     set_pos_setpoint(&motors[1], 0.0f, 0.0f, 0.0f);
+    osDelay(500);
+    //diag
+    set_pos_setpoint(&motors[0], 23000.0f, 0.0f, 0.0f);
+    set_pos_setpoint(&motors[1], 15000.0f, 0.0f, 0.0f);
+    osDelay(500);
+    set_pos_setpoint(&motors[0], 0.0f, 0.0f, 0.0f);
+    set_pos_setpoint(&motors[1], 0.0f, 0.0f, 0.0f);
+
+    //Power cut opportunity
     osDelay(6000);
   }
 
