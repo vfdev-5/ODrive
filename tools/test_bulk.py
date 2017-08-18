@@ -29,8 +29,8 @@ def main(args):
   print("---------------------------------------------------------------------")
   # query device
   dev = usbbulk.poll_odrive_bulk_device(printer=print)
-  print (dev.info())
-  print (dev.init())
+  print(dev.info())
+  print(dev.init())
   # thread
   thread = threading.Thread(target=recieve_thread, args=[dev])
   thread.start()
