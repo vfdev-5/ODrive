@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void axis_thread_entry(void const * temp_motor_ptr);
+void axis_thread_entry(const void* temp_motor_ptr);
 
 #ifdef __cplusplus
 }

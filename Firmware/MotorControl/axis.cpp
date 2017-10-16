@@ -8,8 +8,8 @@ extern "C" {
 }
 
 // C interface
-extern "C" {
-void axis_thread_entry(void const* temp_motor_ptr) {
+extern "C"
+void axis_thread_entry(const void* temp_motor_ptr) {
     Motor_t* motor = (Motor_t*)temp_motor_ptr;
 
     //TODO: explicit axis number assignment
@@ -18,12 +18,11 @@ void axis_thread_entry(void const* temp_motor_ptr) {
     while (&motors[ax_number] != motor)
         ++ax_number;
 
-    static const AxisConfig default_config;
+    static const Axis::AxisConfig default_config;
 
     Axis axis(default_config, ax_number, motor);
     axis.StateMachineLoop();
 }
-}  // extern "C"
 
 void Axis::SetupLegacyMappings() {
     // Legacy reachability from C

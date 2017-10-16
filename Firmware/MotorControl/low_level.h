@@ -14,6 +14,8 @@ typedef enum {
     M_SIGNAL_PH_CURRENT_MEAS = 1u << 0
 } Motor_thread_signals_t;
 
+// This error enum is considered Legacy, and should be replaced
+// with Axis::AxisError in all C++ code
 typedef enum {
     ERROR_NO_ERROR,
     ERROR_PHASE_RESISTANCE_TIMING,

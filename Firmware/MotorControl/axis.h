@@ -1,5 +1,5 @@
-#ifndef __AXIS_HPP
-#define __AXIS_HPP
+#ifndef __AXIS_H
+#define __AXIS_H
 
 //TODO: goal of refactor is to kick this out completely
 extern "C" {
@@ -9,12 +9,6 @@ extern "C" {
 //Outside axis:
     //command handler
     //callback dispatch
-
-// TODO: decide if we want to consolidate all default configs in one file for ease of use?
-struct AxisConfig {
-    bool enable_control_at_start = true;
-    bool do_calibration_at_start = true;
-};
 
 class Axis {
 public:
@@ -39,6 +33,35 @@ public:
     //pos/vel controller
     //step/dir handler
 
+// TODO: decide if we want to consolidate all default configs in one file for ease of use?
+    struct AxisConfig {
+        bool enable_control_at_start = true;
+        bool do_calibration_at_start = true;
+    };
+
+    enum AxisError {
+        kErrorNoError,
+        kErrorPhaseResistanceTiming,
+        kErrorPhaseResistanceMeasurementTimeout,
+        kErrorPhaseResistanceOutOfRange,
+        kErrorPhaseInductanceTiming,
+        kErrorPhaseInductanceMeasurementTimeout,
+        kErrorPhaseInductanceOutOfRange,
+        kErrorEncoderResponse,
+        kErrorEncoderMeasurementTimeout,
+        kErrorAdcFailed,
+        kErrorCalibrationTiming,
+        kErrorFocTiming,
+        kErrorFocMeasurementTimeout,
+        kErrorScanMotorTiming,
+        kErrorFocVoltageTiming,
+        kErrorGatedriverInvalidGain,
+        kErrorPwmSrcFail,
+        kErrorUnexpectedStepSrc,
+        kErrorPosCtrlDuringSensorless,
+        kErrorSpinUpTimeout,
+    };
+
     // Object operation requires ptr to legacy object for now, TODO: get rid of this dep
     Axis(const AxisConfig& config, uint8_t axis_number, Motor_t* legacy_motor_ref);
 
@@ -46,15 +69,13 @@ public:
     void StateMachineLoop();
 
     uint8_t axis_number_;
-
     bool enable_control_;
     bool do_calibration_;
 
     Motor_t* legacy_motor_ref_;
-
 private:
     void SetupLegacyMappings();
 
 };
 
-#endif /* __AXIS_HPP */
+#endif /* __AXIS_H */
