@@ -117,8 +117,32 @@ typedef struct {
     bool* enable_control;
 } Axis_legacy_t;
 
+
+typedef struct {
+    Motor_control_mode_t control_mode;
+    bool enable_step_dir;
+    float counts_per_step;
+    float pos_setpoint;
+    float pos_gain;
+    float vel_setpoint;
+    float vel_gain;
+    float vel_integrator_gain;
+    float vel_integrator_current;
+    float vel_limit;
+    float current_setpoint;
+    float calibration_current;
+    float phase_inductance;
+    float phase_resistance;
+    float shunt_conductance;
+    float phase_current_rev_gain; //Reverse gain for ADC to Amps
+    Current_control_t current_control;
+    Rotor_mode_t rotor_mode;
+} MotorConfig_t;
+
+
 #define TIMING_LOG_SIZE 16
 typedef struct {
+    MotorConfig_t config;
     Axis_legacy_t axis_legacy;
     Motor_control_mode_t control_mode;
     bool enable_step_dir;

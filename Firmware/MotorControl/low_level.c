@@ -38,37 +38,13 @@ float vbus_voltage = 12.0f;
 #define POLE_PAIRS 7
 const float elec_rad_per_enc = POLE_PAIRS * 2 * M_PI * (1.0f / (float)ENCODER_CPR);
 
-#if HW_VERSION_MAJOR == 3
-#if HW_VERSION_MINOR <= 3
-#define SHUNT_RESISTANCE (675e-6f)
-#else
-#define SHUNT_RESISTANCE (500e-6f)
-#endif
-#endif
 
 // TODO: Migrate to C++, clearly we are actually doing object oriented code here...
 // TODO: For nice encapsulation, consider not having the motor objects public
 Motor_t motors[] = {
     {
         // M0
-        .control_mode = CTRL_MODE_POSITION_CONTROL,  //see: Motor_control_mode_t
-        .enable_step_dir = false,                    //auto enabled after calibration
-        .counts_per_step = 2.0f,
         .error = ERROR_NO_ERROR,
-        .pos_setpoint = 0.0f,
-        .pos_gain = 20.0f,  // [(counts/s) / counts]
-        .vel_setpoint = 0.0f,
-        // .vel_setpoint = 800.0f, <sensorless example>
-        .vel_gain = 15.0f / 10000.0f,  // [A/(counts/s)]
-        // .vel_gain = 15.0f / 200.0f, // [A/(rad/s)] <sensorless example>
-        .vel_integrator_gain = 10.0f / 10000.0f,  // [A/(counts/s * s)]
-        // .vel_integrator_gain = 0.0f, // [A/(rad/s * s)] <sensorless example>
-        .vel_integrator_current = 0.0f,  // [A]
-        .vel_limit = 20000.0f,           // [counts/s]
-        .current_setpoint = 0.0f,        // [A]
-        .calibration_current = 10.0f,    // [A]
-        .phase_inductance = 0.0f,        // to be set by measure_phase_inductance
-        .phase_resistance = 0.0f,        // to be set by measure_phase_resistance
         .motor_thread = 0,
         .thread_ready = false,
         // .enable_control = true,
@@ -84,33 +60,13 @@ Motor_t motors[] = {
             .spiHandle = &hspi3,
             // Note: this board has the EN_Gate pin shared!
             .EngpioHandle = EN_GATE_GPIO_Port,
-            .EngpioNumber = EN_GATE_Pin,
+            .EngpioNumber = EN_GATE_Pin,                   
             .nCSgpioHandle = M0_nCS_GPIO_Port,
             .nCSgpioNumber = M0_nCS_Pin,
             .RxTimeOut = false,
             .enableTimeOut = false,
         },
         // .gate_driver_regs Init by DRV8301_setup
-        .shunt_conductance = 1.0f / SHUNT_RESISTANCE,  //[S]
-        .phase_current_rev_gain = 0.0f,                // to be set by DRV8301_setup
-        .current_control = {
-            // Read out max_allowed_current to see max supported value for current_lim.
-            // You can change DRV8301_ShuntAmpGain to get a different range.
-            // .current_lim = 75.0f, //[A]
-            .current_lim = 10.0f,  //[A]
-            .p_gain = 0.0f,        // [V/A] should be auto set after resistance and inductance measurement
-            .i_gain = 0.0f,        // [V/As] should be auto set after resistance and inductance measurement
-            .v_current_control_integral_d = 0.0f,
-            .v_current_control_integral_q = 0.0f,
-            .Ibus = 0.0f,
-            .final_v_alpha = 0.0f,
-            .final_v_beta = 0.0f,
-            .Iq = 0.0f,
-            .max_allowed_current = 0.0f,
-        },
-        // .rotor_mode = ROTOR_MODE_SENSORLESS,
-        // .rotor_mode = ROTOR_MODE_RUN_ENCODER_TEST_SENSORLESS,
-        .rotor_mode = ROTOR_MODE_ENCODER,
         .encoder = {
             .encoder_timer = &htim3,
             .encoder_cpr = ENCODER_CPR,
@@ -150,21 +106,7 @@ Motor_t motors[] = {
         },
     },
     {                                             // M1
-        .control_mode = CTRL_MODE_POSITION_CONTROL,  //see: Motor_control_mode_t
-        .enable_step_dir = false,                    //auto enabled after calibration
-        .counts_per_step = 2.0f,
         .error = ERROR_NO_ERROR,
-        .pos_setpoint = 0.0f,
-        .pos_gain = 20.0f,  // [(counts/s) / counts]
-        .vel_setpoint = 0.0f,
-        .vel_gain = 15.0f / 10000.0f,             // [A/(counts/s)]
-        .vel_integrator_gain = 10.0f / 10000.0f,  // [A/(counts/s * s)]
-        .vel_integrator_current = 0.0f,           // [A]
-        .vel_limit = 20000.0f,                    // [counts/s]
-        .current_setpoint = 0.0f,                 // [A]
-        .calibration_current = 10.0f,             // [A]
-        .phase_inductance = 0.0f,                 // to be set by measure_phase_inductance
-        .phase_resistance = 0.0f,                 // to be set by measure_phase_resistance
         .motor_thread = 0,
         .thread_ready = false,
         // .enable_control = true,
@@ -187,24 +129,6 @@ Motor_t motors[] = {
             .enableTimeOut = false,
         },
         // .gate_driver_regs Init by DRV8301_setup
-        .shunt_conductance = 1.0f / SHUNT_RESISTANCE,  //[S]
-        .phase_current_rev_gain = 0.0f,                // to be set by DRV8301_setup
-        .current_control = {
-            // Read out max_allowed_current to see max supported value for current_lim.
-            // You can change DRV8301_ShuntAmpGain to get a different range.
-            // .current_lim = 75.0f, //[A]
-            .current_lim = 10.0f,  //[A]
-            .p_gain = 0.0f,        // [V/A] should be auto set after resistance and inductance measurement
-            .i_gain = 0.0f,        // [V/As] should be auto set after resistance and inductance measurement
-            .v_current_control_integral_d = 0.0f,
-            .v_current_control_integral_q = 0.0f,
-            .Ibus = 0.0f,
-            .final_v_alpha = 0.0f,
-            .final_v_beta = 0.0f,
-            .Iq = 0.0f,
-            .max_allowed_current = 0.0f,
-        },
-        .rotor_mode = ROTOR_MODE_ENCODER,
         .encoder = {
             .encoder_timer = &htim4,
             .encoder_cpr = ENCODER_CPR,
