@@ -13,7 +13,7 @@
 * as an allocation block. The allocation block keeps track of the state of each
 * field (erased, invalid, valid).
 *
-* One sector is always considered the valid sector and the other one is the
+* One sector is always considered the valid (read) sector and the other one is the
 * victim for the next write access. On startup, if there is exactly one sector
 * whose last non-erased value has the state "valid" that sector is considered
 * the valid sector. In any other case the selection is undefined.
@@ -22,9 +22,9 @@
 * new data is appended in the erased area. This presumably increases flash life span.
 * The victim sector is only erased if there is not enough space for the new data.
 *
-* To write a new block of data atomically we first set all associated allocation
-* states to "invalid" then write the data and then set the allocation states
-* to "valid" (in the direction of increasing address).
+* To write a new block of data atomically we first mark all associated fields
+* as "invalid" (in the allocation table) then write the data and then mark the
+* fields as "valid" (in the direction of increasing address).
 */
 
 #include "nvm.h"
@@ -32,13 +32,8 @@
 #include <stm32f405xx.h>
 #include <stm32f4xx_hal.h>
 #include <string.h>
-#include <cmsis_os.h>
 
 #if defined(STM32F405xx)
-//__attribute__((__section__(".flash_sector_10")))
-//const volatile uint8_t flash_sector_10[0x20000];
-//__attribute__((__section__(".flash_sector_11")))
-//const volatile uint8_t flash_sector_11[0x20000];
 #define FLASH_SECTOR_10_BASE (const volatile uint8_t*)0x80C0000UL
 #define FLASH_SECTOR_10_SIZE 0x20000UL
 #define FLASH_SECTOR_11_BASE (const volatile uint8_t*)0x80E0000UL
@@ -78,7 +73,9 @@ sector_t sectors[] = { {
     .data = (uint64_t *)FLASH_SECTOR_11_BASE
 }};
 
-uint8_t valid_sector_;
+uint8_t read_sector_; // 0 or 1 to indicate which sector to read from and which to write to
+size_t n_staging_area_; // number of 64-bit values that were reserved using NVM_start_write
+size_t n_valid_; // number of 64-bit fields that can be read
 
 // @brief Erases a flash sector. This sets all bits in the sector to 1.
 // The sector's current index is reset to the minimum value (n_reserved).
@@ -203,27 +200,39 @@ int NVM_init(void) {
     // Select valid sector on a best effort basis
     // (in unfortunate cases valid_sector might actually point
     // to an invalid or erased sector)
-    valid_sector_ = 0;
+    read_sector_ = 0;
     if (sector1_state == VALID)
-        valid_sector_ = 1;
+        read_sector_ = 1;
     
-    int state = 0;
+    // count the number of valid fields
+    sector_t *read_sector = &sectors[read_sector_];
+    uint8_t first_nonvalid_state;
+    size_t min_valid_index = scan_allocation_table(read_sector, read_sector->index,
+        VALID, &first_nonvalid_state);
+    n_valid_ = read_sector->index - min_valid_index;
+    
+    n_staging_area_ = 0;
+
+    int status = 0;
     /*// bring non-valid sectors into a known state
     this is not absolutely required
     if (sector0_state != VALID)
-        state |= erase(&sectors[0]);
+        status |= erase(&sectors[0]);
     if (sector1_state != VALID)
-        state |= erase(&sectors[1]);
+        status |= erase(&sectors[1]);
     */
-    return state;
+    return status;
 }
 
 // @brief Erases all data in the NVM.
+//
 // If this function fails subsequent calls to NVM functions (other than NVM_init or NVM_erase)
 // cause undefined behavior.
+// Caution: this function may take a long time (like 1 second)
+//
 // @returns 0 on success or a non-zero error code otherwise
 int NVM_erase(void) {
-    valid_sector_ = 0;
+    read_sector_ = 0;
     sectors[0].index = sectors[0].n_reserved;
     sectors[1].index = sectors[1].n_reserved;
 
@@ -233,33 +242,44 @@ int NVM_erase(void) {
     return state;
 }
 
-// @brief Reads the last valid 64-bit values of the non-volatile memory.
+// @brief Returns the maximum number of bytes that can be read using NVM_read.
+// This holds until NVM_commit is called.
+size_t NVM_get_max_read_length(void) {
+    return n_valid_ << 3;
+}
+
+// @brief Returns the maximum length (in bytes) that can passed to NVM_start_write.
+// This holds until NVM_commit is called.
+size_t NVM_get_max_write_length(void) {
+    sector_t *victim = &sectors[1 - read_sector_];
+    return (victim->n_data - victim->n_reserved) << 3;
+}
+
+// @brief Reads from the latest committed block in the non-volatile memory.
+// @param offset: offset in bytes (0 meaning the beginning of the valid area)
+// @param data: buffer to write to
+// @param length: length in bytes (if (offset + length) is out of range, the function fails)
 // @returns 0 on success or a non-zero error code otherwise
-int NVM_read_tail(uint64_t *data, size_t *length) {
-    sector_t *sector = &sectors[valid_sector_];
-
-    // make sure we only read valid data
-    uint8_t first_nonvalid_state;
-    size_t min_index = scan_allocation_table(sector, sector->index,
-        VALID, &first_nonvalid_state);
-    if (*length > sector->index - min_index)
-        *length = sector->index - min_index;
-
-    const uint64_t *src_ptr = (const uint64_t *)&sector->data[sector->index - *length]; // cast away volatile
-    memcpy(data, src_ptr, *length * sizeof(data[0]));
+int NVM_read(size_t offset, uint8_t *data, size_t length) {
+    if (offset + length > (n_valid_ << 3))
+        return -1;
+    sector_t *read_sector = &sectors[read_sector_];
+    const uint8_t *src_ptr = ((const uint8_t *)&read_sector->data[read_sector->index - n_valid_]) + offset;
+    memcpy(data, src_ptr, length);
     return 0;
 }
 
-// @brief Atomically appends an array of 64-bit values to the non-volatile memory.
+// @brief Starts an atomic write operation. The length must be at most equal to the size.
 //
-// The block size must be at most equal to the size indicated by max_append_size() (TODO).
-// This operation is atomic even if power is lost. If the operation fails, the last
-// successful append() operation remains untouched.
+// The most recent valid NVM data is not modified or invalidated until NVM_commit is called.
+// The length must be at most equal to the size indicated by NVM_get_max_write_length().
 //
-// @returns 0 on success or a non-zero error code otherwise
-int NVM_append(uint64_t *data, size_t length) {
+// @param length: Length of the staging block that should be created
+int NVM_start_write(size_t length) {
     int status = 0;
-    sector_t *victim = &sectors[1 - valid_sector_];
+    sector_t *victim = &sectors[1 - read_sector_];
+
+    length = (length + 7) >> 3; // round to multiple of 64 bit
     if (length > victim->n_data - victim->n_reserved)
         return -1;
 
@@ -273,71 +293,152 @@ int NVM_append(uint64_t *data, size_t length) {
     if (status)
         return status;
 
+    n_staging_area_ = length;
+    return 0;
+}
+
+// @brief Writes to the current data block that was opened with NVM_start_write.
+//
+// The operation fails if (offset + length) is larger than the length passed to NVM_start_write.
+// The most recent valid NVM data is not modified or invalidated until NVM_commit is called.
+//
+// @param offset: The offset in bytes, 0 being the beginning of the staging block.
+// @param data: Pointer to the data that should be written
+// @param length: Data length in bytes
+int NVM_write(size_t offset, uint8_t *data, size_t length) {
+    if (offset + length > (n_staging_area_ << 3))
+        return -1;
+    sector_t *victim = &sectors[1 - read_sector_];
+
     HAL_FLASH_Unlock();
     HAL_FLASH_ClearError();
-    for (size_t i = 0; i < length; ++i) {
-        //printf("write %08x <= %08x\r\n", (uintptr_t)&victim->data[victim->index + i], data[i]); osDelay(5);
-        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,
-                (uintptr_t)&victim->data[victim->index + i], (uint32_t)data[i]) != HAL_OK)
+
+    // handle unaligned start
+    for (; (offset & 0x3) && length; ++data, ++offset, --length)
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE,
+                ((uintptr_t)&victim->data[victim->index]) + offset, *data) != HAL_OK)
             goto fail;
+
+    // write 32-bit values (64-bit doesn't work)
+    for (; length >= 4; data += 4, offset += 4, length -=4)
         if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,
-                (uintptr_t)&victim->data[victim->index + i] + 4, (uint32_t)(data[i] >> 32)) != HAL_OK)
+                ((uintptr_t)&victim->data[victim->index]) + offset, *(uint32_t*)data) != HAL_OK)
             goto fail;
-    }
+
+    // handle unaligned end
+    for (; length; ++data, ++offset, --length)
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE,
+                ((uintptr_t)&victim->data[victim->index]) + offset, *data) != HAL_OK)
+            goto fail;
+
     HAL_FLASH_Lock();
-
-    // set the newly-written fields to valid
-    status = set_allocation_state(victim, victim->index, length, VALID);
-    victim->index += length;
-    if (status)
-        return status;
-
-    // invalidate the other sector
-    if (sectors[valid_sector_].index < sectors[valid_sector_].n_data)
-        status = set_allocation_state(&sectors[valid_sector_], sectors[valid_sector_].index, 1, INVALID);
-    else
-        status = erase(&sectors[valid_sector_]);
-    if (status)
-        return status;
-
-    valid_sector_ = 1 - valid_sector_;
     return 0;
 fail:
     HAL_FLASH_Lock();
     return HAL_FLASH_GetError(); // non-zero
 }
 
+// @brief Commits the new data to NVM atomically.
+int NVM_commit(void) {
+    sector_t *read_sector = &sectors[read_sector_];
+    sector_t *write_sector = &sectors[1 - read_sector_];
 
+    // mark the newly-written fields as valid
+    int status = set_allocation_state(write_sector, write_sector->index, n_staging_area_, VALID);
+    if (status)
+        return status;
+
+    write_sector->index += n_staging_area_;
+    n_valid_ = n_staging_area_;
+    n_staging_area_ = 0;
+    read_sector_ = 1 - read_sector_;
+
+    // invalidate the other sector
+    if (read_sector->index < read_sector->n_data)
+        status = set_allocation_state(read_sector, read_sector->index, 1, INVALID);
+    else
+        status = erase(read_sector);
+    if (status)
+        return status;
+    return 0;
+}
+
+
+#include <cmsis_os.h>
+/** @brief Call this at startup to test/demo the NVM driver
+
+ Expected output when starting with a fully erased NVM
+
+    [1st boot]
+    === NVM TEST ===
+    NVM is empty
+    write 0x00, ..., 0x25 to NVM
+    new data committed to NVM
+    
+    [2nd boot]
+    === NVM TEST ===
+    NVM contains 40 valid bytes:
+    00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
+    10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f
+    20 21 22 23 24 25 ff ff
+    write 0xbd, ..., 0xe2 to NVM
+    new data committed to NVM
+
+    [3rd boot]
+    === NVM TEST ===
+    NVM contains 40 valid bytes:
+    bd be bf c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 ca cb cc
+    cd ce cf d0 d1 d2 d3 d4 d5 d6 d7 d8 d9 da db dc
+    dd de df e0 e1 e2 ff ff
+    write 0xcb, ..., 0xf0 to NVM
+    new data committed to NVM
+*/
 void NVM_demo(void) {
-    const size_t test_length = 14;
-    uint64_t data[test_length];
-    size_t length = test_length;
+    const size_t len = 38;
+    uint8_t data[len];
+    int progress = 0;
+    uint8_t seed = 0;
 
     osDelay(100);
     printf("=== NVM TEST ===\r\n"); osDelay(5);
     //NVM_erase();
-    if (NVM_init() != 0) {
-        printf("init error\r\n"); osDelay(5);
-    } else if (NVM_read_tail(data, &length) != 0) {
-        printf("read error\r\n"); osDelay(5);
-    } else {
-        if (length < test_length) {
-            printf("uninitialized (found %u fields) => init\r\n", length); osDelay(5);
-            for (size_t i = 0; i < test_length; i++)
-                data[i] = i * 3;
-        } else {
-            printf("have data: \r\n"); osDelay(5);
-            for (size_t i = 0; i < test_length; i++)
-                { printf(" %08x \r\n", (unsigned int)data[i]); osDelay(5); }
-            printf("\r\n"); osDelay(5);
-
-            printf(" => increment by 1\r\n"); osDelay(5);
-            for (size_t i = 0; i < test_length; i++)
-                data[i] += 1;
+    if (progress++, NVM_init() != 0)
+        goto fail;
+    
+    // load bytes from NVM and print them
+    size_t available = NVM_get_max_read_length();
+    if (available) {
+        printf("NVM contains %d valid bytes:\r\n", available); osDelay(5);
+        uint8_t buf[available];
+        if (progress++, NVM_read(0, buf, available) != 0)
+            goto fail;
+        for (size_t pos = 0; pos < available; ++pos) {
+            seed += buf[pos];
+            printf(" %02x", buf[pos]);
+            if ((((pos + 1) % 16) == 0) || ((pos + 1) == available))
+                printf("\r\n");
+            osDelay(2);
         }
-            
-        if (NVM_append(data, test_length) != 0)
-            printf("write error\r\n");
-        printf("done\r\n");
+    } else {
+        printf("NVM is empty\r\n"); osDelay(5);
     }
+
+    // store new bytes in NVM (data based on seed)
+    printf("write 0x%02x, ..., 0x%02x to NVM\r\n", seed, seed + len - 1); osDelay(5);
+    for (size_t i = 0; i < len; i++)
+        data[i] = seed++;
+    if (progress++, NVM_start_write(len) != 0)
+        goto fail;
+    if (progress++, NVM_write(0, data, len / 2))
+        goto fail;
+    if (progress++, NVM_write(len / 2, &data[len / 2], len - (len / 2)))
+        goto fail;
+    if (progress++, NVM_commit())
+        goto fail;
+    printf("new data committed to NVM\r\n"); osDelay(5);
+
+    return;
+
+fail:
+    printf("NVM test failed at %d!\r\n", progress);
 }
