@@ -204,7 +204,7 @@ const Endpoint endpoints[] = {
     Endpoint::make_function("save_config", &save_configuration),
         // no arguments
     Endpoint::close_tree(),
-    Endpoint::make_function("clear_config", &clear_configuration),
+    Endpoint::make_function("reset", &reset),
         // no arguments
     Endpoint::close_tree()
 };

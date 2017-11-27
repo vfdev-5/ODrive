@@ -6,8 +6,8 @@ extern "C" {
 #endif
 
 void init_configuration(void);
-void clear_configuration(void);
 void save_configuration(void);
+void reset(void);
 
 #ifdef __cplusplus
 }

@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stm32f405xx.h>
 
 #include "nvm.h"
 #include "crc.hpp"
@@ -226,10 +227,6 @@ void init_configuration(void) {
     set_motor_config(&motor_config[1], &motors[1]);
 }
 
-void clear_configuration(void) {
-    NVM_erase();
-}
-
 void save_configuration(void) {
     MotorConfig_t motor_config[2];
     get_motor_config(&motors[0], &motor_config[0]);
@@ -237,4 +234,9 @@ void save_configuration(void) {
     if (Config<MotorConfig_t, MotorConfig_t>::store_config(&motor_config[0], &motor_config[1])) {
         //printf("saving configuration failed\r\n"); osDelay(5);
     }
+}
+
+void reset(void) {
+    NVM_erase();
+    NVIC_SystemReset();
 }
