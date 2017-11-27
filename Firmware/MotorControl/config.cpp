@@ -1,4 +1,6 @@
 
+/* Includes ------------------------------------------------------------------*/
+
 #include "config.h"
 
 #include <stdint.h>
@@ -8,8 +10,47 @@
 #include "crc.hpp"
 #include "low_level.h"
 
+/* Private defines -----------------------------------------------------------*/
 #define CRC16_INIT 0xabcd
 
+#if HW_VERSION_MAJOR == 3
+#if HW_VERSION_MINOR <= 3
+#define SHUNT_RESISTANCE (675e-6f)
+#else
+#define SHUNT_RESISTANCE (500e-6f)
+#endif
+#endif
+
+/* Private macros ------------------------------------------------------------*/
+/* Private typedef -----------------------------------------------------------*/
+
+typedef struct {
+    Motor_control_mode_t control_mode;
+    bool enable_step_dir;
+    float counts_per_step;
+    float pos_setpoint;
+    float pos_gain;
+    float vel_setpoint;
+    float vel_gain;
+    float vel_integrator_gain;
+    float vel_integrator_current;
+    float vel_limit;
+    float current_setpoint;
+    float calibration_current;
+    float phase_inductance;
+    float phase_resistance;
+    float shunt_conductance;
+    float phase_current_rev_gain; //Reverse gain for ADC to Amps
+    Current_control_t current_control;
+    Rotor_mode_t rotor_mode;
+} MotorConfig_t;
+
+/* Global constant data ------------------------------------------------------*/
+/* Global variables ----------------------------------------------------------*/
+/* Private constant data -----------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+/* Private function prototypes -----------------------------------------------*/
+/* Function implementations --------------------------------------------------*/
 
 template<typename ... Ts>
 struct Config;
@@ -87,15 +128,6 @@ struct Config<T, Ts...> {
     }
 };
 
-
-
-#if HW_VERSION_MAJOR == 3
-#if HW_VERSION_MINOR <= 3
-#define SHUNT_RESISTANCE (675e-6f)
-#else
-#define SHUNT_RESISTANCE (500e-6f)
-#endif
-#endif
 
 void load_default_motor_config(MotorConfig_t* config) {
     config->control_mode = CTRL_MODE_POSITION_CONTROL;  //see: Motor_control_mode_t
