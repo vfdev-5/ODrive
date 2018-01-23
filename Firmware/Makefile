@@ -8,6 +8,19 @@
 TARGET = ODriveFirmware
 
 ######################################
+# target
+######################################
+# Available values : 
+# - STM32F405RG 
+# - STM32F446RE
+# - STM32F407VG
+CHIP = STM32F407VG
+CHIP_LOWER_CASE = $(shell echo $(CHIP) | tr A-Z a-z)
+# e.g CHIP_LOWER_CASE = stm32f405rg
+CHIP_BASE_LOWER_CASE = $(shell echo $(CHIP_LOWER_CASE) | cut -c1-9)
+# e.g CHIP_BASE_LOWER_CASE = stm32f405
+
+######################################
 # building variables
 ######################################
 # debug build?
@@ -87,7 +100,7 @@ CPP_SOURCES = \
   MotorControl/commands.cpp \
   MotorControl/protocol.cpp
 ASM_SOURCES = \
-  startup/startup_stm32f405xx.s
+  startup/startup_$(CHIP_BASE_LOWER_CASE)xx.s
 
 #######################################
 # binaries
@@ -137,7 +150,7 @@ CXXFLAGS += -std=c++14 -MD -MP -MF .dep/$(@F).d
 # LDFLAGS
 #######################################
 # link script
-LDSCRIPT = STM32F405RGTx_FLASH.ld
+LDSCRIPT = $(CHIP)Tx_FLASH.ld
 # libraries
 LIBS = -lc -lm -lnosys -larm_cortexM4lf_math
 LIBDIR = -LDrivers/CMSIS/Lib
@@ -184,7 +197,7 @@ $(BUILD_DIR):
 #######################################
 # clean up
 #######################################
-clean:
+clean:  
 	-rm -fR .dep $(BUILD_DIR)
 
 #######################################
