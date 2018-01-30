@@ -2,7 +2,8 @@
 
 // Because of broken cmsis_os.h, we need to include arm_math first,
 // otherwise chip specific defines are ommited
-#include <stm32f405xx.h>
+// #include <stm32f405xx.h>
+#include <stm32f4xx.h>
 #include <stm32f4xx_hal.h>  // Sets up the correct chip specifc defines required by arm_math
 #define ARM_MATH_CM4
 #include <arm_math.h>
@@ -108,9 +109,9 @@ Motor_t motors[] = {
             .Iq = 0.0f,
             .max_allowed_current = 0.0f,
         },
-        // .rotor_mode = ROTOR_MODE_SENSORLESS,
+        .rotor_mode = ROTOR_MODE_SENSORLESS,
         // .rotor_mode = ROTOR_MODE_RUN_ENCODER_TEST_SENSORLESS,
-        .rotor_mode = ROTOR_MODE_ENCODER,
+        // .rotor_mode = ROTOR_MODE_ENCODER,
         .encoder = {
             .encoder_timer = &htim3,
             .encoder_cpr = ENCODER_CPR,
@@ -167,8 +168,8 @@ Motor_t motors[] = {
         .phase_resistance = 0.0f,                 // to be set by measure_phase_resistance
         .motor_thread = 0,
         .thread_ready = false,
-        // .enable_control = true,
-        // .do_calibration = true,
+        // .enable_control = false, 
+        // .do_calibration = false, 
         // .calibration_ok = false,
         .motor_timer = &htim8,
         .next_timings = {TIM_1_8_PERIOD_CLOCKS / 2, TIM_1_8_PERIOD_CLOCKS / 2, TIM_1_8_PERIOD_CLOCKS / 2},

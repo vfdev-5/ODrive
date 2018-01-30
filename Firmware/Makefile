@@ -13,12 +13,15 @@ TARGET = ODriveFirmware
 # Available values : 
 # - STM32F405RG 
 # - STM32F446RE
+# - STM32F446ZE
 # - STM32F407VG
-CHIP = STM32F407VG
+CHIP = STM32F446ZE
 CHIP_LOWER_CASE = $(shell echo $(CHIP) | tr A-Z a-z)
 # e.g CHIP_LOWER_CASE = stm32f405rg
 CHIP_BASE_LOWER_CASE = $(shell echo $(CHIP_LOWER_CASE) | cut -c1-9)
 # e.g CHIP_BASE_LOWER_CASE = stm32f405
+CHIP_BASE_UPPER_CASE = $(shell echo $(CHIP_BASE_LOWER_CASE) | tr a-z A-Z)
+# e.g. CHIP_BASE_UPPER_CASE = STM32F405
 
 ######################################
 # building variables
@@ -119,7 +122,7 @@ BIN = $(CP) -O binary -S
 #######################################
 # macros for gcc
 AS_DEFS =
-C_DEFS = -D__weak="__attribute__((weak))" -D__packed="__attribute__((__packed__))" -DUSE_HAL_DRIVER -DSTM32F405xx
+C_DEFS = -D__weak="__attribute__((weak))" -D__packed="__attribute__((__packed__))" -DUSE_HAL_DRIVER -D$(CHIP_BASE_UPPER_CASE)xx
 # includes for gcc
 AS_INCLUDES =
 C_INCLUDES = -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
@@ -216,11 +219,14 @@ bmp: $(BUILD_DIR)/$(TARGET).elf
 		--ex 'attach 1' \
 		--ex 'load' $(BUILD_DIR)/$(TARGET).elf
 
+# echo: $(CHIP_BASE_UPPER_CASE)
+  # -echo $(CHIP_BASE_UPPER_CASE)
+
 #######################################
 # dependencies
 #######################################
 -include $(shell mkdir .dep 2>/dev/null) $(wildcard .dep/*)
 
-.PHONY: clean all flash gdb
+.PHONY: clean all flash gdb echo
 
 # *** EOF ***
